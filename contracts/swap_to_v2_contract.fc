@@ -1,0 +1,133 @@
+{-
+    This contract is used to migrate from FCK v1 to FCK v2 jetton.
+    Usefull for rebranding.
+
+    @author BeyCoder (https://github.com/BeyCoder)
+    @repository https://github.com/fck-foundation/v2-contracts
+-}
+
+#include "imports/stdlib.fc";
+
+const op::set_jetton_wallets = "op::set_jetton_wallets"c;
+const op::withdraw_old_jettons = "op::withdraw_old_jettons"c;
+const op::withdraw_new_jettons = "op::withdraw_new_jettons"c;
+
+global slice admin_wallet;
+global slice old_jetton_wallet;
+global slice new_jetton_wallet;
+global var old_jetton_balance;
+global var new_jetton_balance;
+
+() load_data() impure { ;; loading global variables from c4 storage
+    var ds = get_data().begin_parse();
+
+    old_jetton_wallet = ds~load_msg_addr();
+    new_jetton_wallet = ds~load_msg_addr();
+    old_jetton_balance = ds~load_coins();
+    new_jetton_balance = ds~load_coins();
+
+    ds.end_parse();
+}
+
+() save_data() impure { ;; save global variables to storage
+    set_data(
+        begin_cell()
+            .store_slice(admin_wallet)
+            .store_slice(old_jetton_wallet)
+            .store_slice(new_jetton_wallet)
+            .store_coins(old_jetton_balance)
+            .store_coins(new_jetton_balance)
+        .end_cell()
+    );
+}
+
+() recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
+    if (in_msg_body.slice_empty?()) { ;; ignore all empty messages
+        return ();
+    }
+
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_uint(4);
+    slice sender_address = cs~load_msg_addr();
+
+    (int sender_wc, int sender_hashpart) = parse_std_addr(sender_address);
+
+    throw_unless(333, sender_wc == 0); ;; not basechain
+
+    if (flags & 1) {  ;; ignore bounced messages
+        return ();
+    }
+
+    load_data(); ;; updating global variables from storage
+
+    int op = in_msg_body~load_uint(32);
+    int query_id = in_msg_body~load_uint(64);
+
+    if (op == op::set_jetton_wallets) { ;; updatig jetton wallets
+        if equal_slices(admin_wallet, sender_address) { ;; it's admin
+            old_jetton_wallet = in_msg_body~load_msg_addr();
+            new_jetton_wallet = in_msg_body~load_msg_addr();
+            new_jetton_balance = 0;
+            old_jetton_balance = 0;
+            save_data();
+        }
+        return ();
+    }
+
+    if (op == op::transfer_notification) {
+        int amount = in_msg_body~load_coins(); ;; amount of tokens
+        slice from_address = in_msg_body~load_msg_addr(); ;; sender's wallet
+
+        if equal_slices(sender_address, old_jetton_wallet) { ;; if it's old jetton
+
+            if (amount <= new_jetton_balance) { ;; if contract can swap old jettons to new tokens
+                ;; send new jettons
+                jetton::send(0, new_jetton_wallet, query_id, amount, from_address, from_address, 1, 64);
+
+                new_jetton_balance = new_jetton_balance - amount; ;; update new jetton balance
+                old_jetton_balance = old_jetton_balance + amount; ;; update old jetton balance
+                save_data();
+            } else { ;; return jettons back to user
+                jetton::send(0, old_jetton_wallet, query_id, amount, from_address, from_address, 1, 64);
+            }
+
+            return ();
+        }
+
+        if equal_slices(sender_address, new_jetton_wallet) { ;; if it's new jetton
+            new_jetton_balance = new_jetton_balance + amount; ;; updating balance
+            save_data(); ;; saving data
+
+            return ();
+        }
+        return ();
+    }
+
+    if (op == op::withdraw_old_jettons & equal_slices(admin_wallet, from_address)) { ;; withdraw old jettons if it's admin
+        int withdraw_amount = in_msg_body~load_coins();
+        jetton::send(0, old_jetton_wallet, query_id, withdraw_amount, admin_wallet, admin_wallet, 1, 64);
+        if (old_jetton_balance <= withdraw_amount) {
+            old_jetton_balance = 0;
+        } else {
+            old_jetton_balance = old_jetton_balance - withdraw_amount;
+        }
+        save_data();
+
+        return ();
+    }
+
+    if (op == op::withdraw_new_jettons & equal_slices(admin_wallet, from_address)) { ;; withdraw new jettons if it's admin
+        int withdraw_amount = in_msg_body~load_coins();
+        jetton::send(0, new_jetton_wallet, query_id, withdraw_amount, admin_wallet, admin_wallet, 1, 64);
+        if (new_jetton_balance <= withdraw_amount) {
+            new_jetton_balance = 0;
+        } else {
+            new_jetton_balance = new_jetton_balance - withdraw_amount;
+        }
+        save_data();
+
+        return ();
+    }
+
+    throw(0xffff); ;; unknown message
+}

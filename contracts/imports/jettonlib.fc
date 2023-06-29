@@ -1,0 +1,35 @@
+{-
+    @author BeyCoder (https://github.com/BeyCoder)
+    @repository https://github.com/fck-foundation/jetton-func
+-}
+
+#include "stdlib.fc";
+#include "msglib.fc";
+
+;; Actions
+const int op::transfer = 0xf8a7ea5;
+const int op::transfer_notification = 0x7362d09c;
+const int op::internal_transfer = 0x178d4519;
+const int op::excesses = 0xd53276db;
+const int op::burn = 0x595f07bc;
+const int op::burn_notification = 0x7bdd97de;
+
+;; Minter
+const int op::mint = 21;
+
+;; ton_value: int - how much TON will send with message. Should be >~0.15 TON
+;; jetton_wallet: Address - jetton wallet address of current smart contract
+() jetton::send(int ton_value, slice jetton_wallet, int query_id, int amount, slice destination, slice response_destination, int forward_fee, int mode) impure inline_ref {
+    cell body = begin_cell()
+            .store_uint(op::transfer, 32)
+            .store_uint(query_id, 64) ;; query id
+            .store_coins(amount) ;; amount
+            .store_slice(destination) ;; destination
+            .store_slice(response_destination) ;; forward fee destination
+            .store_uint(0, 1) ;; custom payload
+            .store_coins(forward_fee) ;; forward fee
+            .store_uint(0, 1) ;; forward payload Either
+            .end_cell();
+
+    messages::send_with_body(ton_value, jetton_wallet, body, mode);
+}
