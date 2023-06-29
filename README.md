@@ -1,4 +1,4 @@
-# migration
+# v2-contracts
 
 ## Project structure
 
