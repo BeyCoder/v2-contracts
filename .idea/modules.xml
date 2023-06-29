@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/v2-migration-contracts.iml" filepath="$PROJECT_DIR$/.idea/v2-migration-contracts.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../v2-contracts/.idea/v2-contracts.iml" filepath="$PROJECT_DIR$/../v2-contracts/.idea/v2-contracts.iml" />
     </modules>
   </component>
 </project>
