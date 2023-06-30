@@ -17,7 +17,9 @@ describe('SwapToV2Contract', () => {
     beforeEach(async () => {
         blockchain = await Blockchain.create();
 
-        swapToV2Contract = blockchain.openContract(SwapToV2Contract.createFromConfig({}, code));
+        swapToV2Contract = blockchain.openContract(SwapToV2Contract.createFromConfig({
+            
+        }, code));
 
         const deployer = await blockchain.treasury('deployer');
 

@@ -16,7 +16,9 @@ global slice admin_wallet;
 global slice old_jetton_wallet;
 global slice new_jetton_wallet;
 global var old_jetton_balance;
+global int old_jetton_decimals;
 global var new_jetton_balance;
+global int new_jetton_decimals;
 
 () load_data() impure { ;; loading global variables from c4 storage
     var ds = get_data().begin_parse();
@@ -24,7 +26,9 @@ global var new_jetton_balance;
     old_jetton_wallet = ds~load_msg_addr();
     new_jetton_wallet = ds~load_msg_addr();
     old_jetton_balance = ds~load_coins();
+    old_jetton_decimals = ds~load_int();
     new_jetton_balance = ds~load_coins();
+    new_jetton_decimals = ds~load_int();
 
     ds.end_parse();
 }
@@ -36,9 +40,27 @@ global var new_jetton_balance;
             .store_slice(old_jetton_wallet)
             .store_slice(new_jetton_wallet)
             .store_coins(old_jetton_balance)
+            .store_uint(old_jetton_decimals, 8)
             .store_coins(new_jetton_balance)
+            .store_uint(new_jetton_decimals, 8)
         .end_cell()
     );
+}
+
+;; pow function
+(int) binpow (int n, int e) {
+    if (e == 0) {
+        return 1;
+    }
+    if (e == 1) {
+        return n;
+    }
+    int p = binpow(n, e / 2);
+    p *= p;
+    if ((e % 2) == 1) {
+        p *= n;
+    }
+    return p;
 }
 
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
@@ -66,7 +88,9 @@ global var new_jetton_balance;
     if (op == op::set_jetton_wallets) { ;; updatig jetton wallets
         if equal_slices(admin_wallet, sender_address) { ;; it's admin
             old_jetton_wallet = in_msg_body~load_msg_addr();
+            old_jetton_decimals = in_msg_body~load_uint(8);
             new_jetton_wallet = in_msg_body~load_msg_addr();
+            old_jetton_decimals = in_msg_body~load_uint(8);
             new_jetton_balance = 0;
             old_jetton_balance = 0;
             save_data();
@@ -80,11 +104,14 @@ global var new_jetton_balance;
 
         if equal_slices(sender_address, old_jetton_wallet) { ;; if it's old jetton
 
+            int old_jetton_amount = amount / binpow(10, old_jetton_decimals); ;; consider decimals of old jetton
+            int new_jetton_amount = old_jetton_amount * binpow(10, new_jetton_decimals); ;; how much sender will get of new jettons
+
             if (amount <= new_jetton_balance) { ;; if contract can swap old jettons to new tokens
                 ;; send new jettons
-                jetton::send(0, new_jetton_wallet, query_id, amount, from_address, from_address, 1, 64);
+                jetton::send(0, new_jetton_wallet, query_id, new_jetton_amount, from_address, from_address, 1, 64);
 
-                new_jetton_balance = new_jetton_balance - amount; ;; update new jetton balance
+                new_jetton_balance = new_jetton_balance - new_jetton_amount; ;; update new jetton balance
                 old_jetton_balance = old_jetton_balance + amount; ;; update old jetton balance
                 save_data();
             } else { ;; return jettons back to user
@@ -131,3 +158,17 @@ global var new_jetton_balance;
 
     throw(0xffff); ;; unknown message
 }
+
+;; get methods
+
+(int, int) get_balances() method_id {
+    load_data();
+    return (old_jetton_balance, new_jetton_balance);
+}
+
+(slice, int, slice, int) get_jetton_wallets() method_id {
+    load_data();
+    return (old_jetton_wallet, old_jetton_decimals, old_jetton_wallet, new_jetton_decimals);
+}
+
+
