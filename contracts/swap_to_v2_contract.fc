@@ -7,6 +7,7 @@
 -}
 
 #include "imports/stdlib.fc";
+#include "imports/jettonlib.fc";
 
 const op::set_jetton_wallets = "op::set_jetton_wallets"c;
 const op::withdraw_old_jettons = "op::withdraw_old_jettons"c;
@@ -23,12 +24,13 @@ global int new_jetton_decimals;
 () load_data() impure { ;; loading global variables from c4 storage
     var ds = get_data().begin_parse();
 
+    admin_wallet = ds~load_msg_addr();
     old_jetton_wallet = ds~load_msg_addr();
     new_jetton_wallet = ds~load_msg_addr();
     old_jetton_balance = ds~load_coins();
-    old_jetton_decimals = ds~load_int();
+    old_jetton_decimals = ds~load_uint(8);
     new_jetton_balance = ds~load_coins();
-    new_jetton_decimals = ds~load_int();
+    new_jetton_decimals = ds~load_uint(8);
 
     ds.end_parse();
 }
@@ -90,7 +92,7 @@ global int new_jetton_decimals;
             old_jetton_wallet = in_msg_body~load_msg_addr();
             old_jetton_decimals = in_msg_body~load_uint(8);
             new_jetton_wallet = in_msg_body~load_msg_addr();
-            old_jetton_decimals = in_msg_body~load_uint(8);
+            new_jetton_decimals = in_msg_body~load_uint(8);
             new_jetton_balance = 0;
             old_jetton_balance = 0;
             save_data();
@@ -103,11 +105,14 @@ global int new_jetton_decimals;
         slice from_address = in_msg_body~load_msg_addr(); ;; sender's wallet
 
         if equal_slices(sender_address, old_jetton_wallet) { ;; if it's old jetton
+            var decimals_diff = abs(new_jetton_decimals - old_jetton_decimals); ;; decimals diff
+            var decimals_coef = 1;
+            if (decimals_diff > 0) {
+                decimals_coef = binpow(10, abs(new_jetton_decimals - old_jetton_decimals));
+            }
+            int new_jetton_amount = amount * decimals_coef; ;; how much sender will get of new jettons
 
-            int old_jetton_amount = amount / binpow(10, old_jetton_decimals); ;; consider decimals of old jetton
-            int new_jetton_amount = old_jetton_amount * binpow(10, new_jetton_decimals); ;; how much sender will get of new jettons
-
-            if (amount <= new_jetton_balance) { ;; if contract can swap old jettons to new tokens
+            if (new_jetton_amount <= new_jetton_balance) { ;; if contract can swap old jettons to new tokens
                 ;; send new jettons
                 jetton::send(0, new_jetton_wallet, query_id, new_jetton_amount, from_address, from_address, 1, 64);
 
@@ -130,7 +135,7 @@ global int new_jetton_decimals;
         return ();
     }
 
-    if (op == op::withdraw_old_jettons & equal_slices(admin_wallet, from_address)) { ;; withdraw old jettons if it's admin
+    if (op == op::withdraw_old_jettons & equal_slices(admin_wallet, sender_address)) { ;; withdraw old jettons if it's admin
         int withdraw_amount = in_msg_body~load_coins();
         jetton::send(0, old_jetton_wallet, query_id, withdraw_amount, admin_wallet, admin_wallet, 1, 64);
         if (old_jetton_balance <= withdraw_amount) {
@@ -143,7 +148,7 @@ global int new_jetton_decimals;
         return ();
     }
 
-    if (op == op::withdraw_new_jettons & equal_slices(admin_wallet, from_address)) { ;; withdraw new jettons if it's admin
+    if (op == op::withdraw_new_jettons & equal_slices(admin_wallet, sender_address)) { ;; withdraw new jettons if it's admin
         int withdraw_amount = in_msg_body~load_coins();
         jetton::send(0, new_jetton_wallet, query_id, withdraw_amount, admin_wallet, admin_wallet, 1, 64);
         if (new_jetton_balance <= withdraw_amount) {

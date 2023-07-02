@@ -12,16 +12,18 @@ import {
 import {JettonMaster} from "ton";
 
 export type SwapToV2ContractConfig = {
-    old_jetton_wallet: Address,
-    new_jetton_wallet: Address,
+    admin_wallet: Address,
+    old_jetton_wallet: Address|null,
+    new_jetton_wallet: Address|null,
     old_jetton_balance: bigint,
     old_jetton_decimals: number,
     new_jetton_balance: bigint,
-    new_jetton_decimals: bigint,
+    new_jetton_decimals: number,
 };
 
 export function swapToV2ContractConfigToCell(config: SwapToV2ContractConfig): Cell {
     return beginCell()
+        .storeAddress(config.admin_wallet)
         .storeAddress(config.old_jetton_wallet)
         .storeAddress(config.new_jetton_wallet)
         .storeCoins(config.old_jetton_balance)
@@ -33,8 +35,8 @@ export function swapToV2ContractConfigToCell(config: SwapToV2ContractConfig): Ce
 
 export const Opcodes = {
     set_jetton_wallets: 0x996c7334,
-    withdraw_old_jettons: 0xbe4d8345,
-    withdraw_new_jettons: 0x923ccb44,
+    withdraw_old_jettons: 0x49f9255e,
+    withdraw_new_jettons: 0xe12fafe0,
 };
 
 export class SwapToV2Contract implements Contract {
@@ -62,29 +64,63 @@ export class SwapToV2Contract implements Contract {
         provider: ContractProvider,
         via: Sender,
         opts: {
-            old_jetton_address: Address;
+            old_jetton_wallet: Address;
             old_jetton_decimals: number;
-            new_jetton_address: Address;
+            new_jetton_wallet: Address;
             new_jetton_decimals: number;
             queryID?: number;
         }
     ) {
-        const old_masterContract = JettonMaster.create(opts.old_jetton_address);
-        const old_jetton_wallet = await old_masterContract.getWalletAddress(provider, this.address);
-
-        const new_masterContract = JettonMaster.create(opts.new_jetton_address);
-        const new_jetton_wallet = await new_masterContract.getWalletAddress(provider, this.address);
-
         await provider.internal(via, {
             value: toNano("0.01"),
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell()
                 .storeUint(Opcodes.set_jetton_wallets, 32)
                 .storeUint(opts.queryID ?? 0, 64)
-                .storeAddress(old_jetton_wallet)
+                .storeAddress(opts.old_jetton_wallet)
                 .storeUint(opts.old_jetton_decimals, 8)
-                .storeAddress(new_jetton_wallet)
+                .storeAddress(opts.new_jetton_wallet)
                 .storeUint(opts.new_jetton_decimals, 8)
+                .endCell(),
+        });
+    }
+
+    async sendWithdrawOldJettons(
+        provider: ContractProvider,
+        via: Sender,
+        opts: {
+            amount: number;
+            decimals: number;
+            queryID?: number;
+        }
+    ) {
+        await provider.internal(via, {
+            value: toNano("0.1"),
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: beginCell()
+                .storeUint(Opcodes.withdraw_old_jettons, 32)
+                .storeUint(opts.queryID ?? 0, 64)
+                .storeCoins(opts.amount * (10 ** opts.decimals))
+                .endCell(),
+        });
+    }
+
+    async sendWithdrawNewJettons(
+        provider: ContractProvider,
+        via: Sender,
+        opts: {
+            amount: number;
+            decimals: number;
+            queryID?: number;
+        }
+    ) {
+        await provider.internal(via, {
+            value: toNano("0.1"),
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: beginCell()
+                .storeUint(Opcodes.withdraw_new_jettons, 32)
+                .storeUint(opts.queryID ?? 0, 64)
+                .storeCoins(opts.amount * (10 ** opts.decimals))
                 .endCell(),
         });
     }
@@ -93,7 +129,7 @@ export class SwapToV2Contract implements Contract {
         provider: ContractProvider,
         via: Sender,
         opts: {
-            old_jetton_address: Address
+            old_jetton_wallet: Address
             jetton_amount: bigint,
             value: bigint;
             decimals: number
@@ -104,21 +140,16 @@ export class SwapToV2Contract implements Contract {
             console.error("Sender excepted! Can't find JettonWallet of user.");
             return;
         }
-
-        const jettonMaster = JettonMaster.create(opts.old_jetton_address);
-        const new_jetton_wallet = await jettonMaster.getWalletAddress(provider, via.address);
-
         const body = beginCell()
             .storeUint(0xf8a7ea5, 32)
             .storeUint(0, 64)
-            .storeCoins(opts.jetton_amount * (10 ** opts.decimals))
+            .storeCoins(Number(opts.jetton_amount) * (10 ** opts.decimals))
             .storeAddress(this.address)
             .storeAddress(via.address)
             .storeUint(0, 1)
             .storeCoins(toNano("0.1"))
             .storeUint(0, 1)
             .storeUint(0, 32)
-            .storeStringTail("Migrating to v2")
             .endCell();
 
         await provider.internal(via, {
@@ -139,9 +170,9 @@ export class SwapToV2Contract implements Contract {
     async getJettonWallets(provider: ContractProvider) {
         const result = await provider.get('get_jetton_wallets', []);
         return {
-            old_jetton: result.stack.readAddress(),
+            old_jetton: result.stack.readAddressOpt(),
             old_jetton_decimals: result.stack.readNumber(),
-            new_jetton: result.stack.readAddress(),
+            new_jetton: result.stack.readAddressOpt(),
             new_jetton_decimals: result.stack.readNumber()
         };
     }
