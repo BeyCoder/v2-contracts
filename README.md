@@ -1,5 +1,9 @@
 # v2-contracts
 
+## Contracts
+-   [IDO](https://github.com/fck-foundation/v2-contracts/blob/main/contracts/IDO.md)
+-   [FCK V2 migration swapper](https://github.com/fck-foundation/v2-contracts/blob/main/contracts/swap_to_v2.md)
+
 ## Project structure
 
 -   `contracts` - source code of all the smart contracts of the project and their dependencies.
