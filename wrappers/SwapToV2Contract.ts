@@ -125,40 +125,6 @@ export class SwapToV2Contract implements Contract {
         });
     }
 
-    async sendSwap(
-        provider: ContractProvider,
-        via: Sender,
-        opts: {
-            old_jetton_wallet: Address
-            jetton_amount: bigint,
-            value: bigint;
-            decimals: number
-            queryID?: number;
-        }
-    ) {
-        if(!via.address) {
-            console.error("Sender excepted! Can't find JettonWallet of user.");
-            return;
-        }
-        const body = beginCell()
-            .storeUint(0xf8a7ea5, 32)
-            .storeUint(0, 64)
-            .storeCoins(Number(opts.jetton_amount) * (10 ** opts.decimals))
-            .storeAddress(this.address)
-            .storeAddress(via.address)
-            .storeUint(0, 1)
-            .storeCoins(toNano("0.1"))
-            .storeUint(0, 1)
-            .storeUint(0, 32)
-            .endCell();
-
-        await provider.internal(via, {
-            value: toNano("0.15"),
-            sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body
-        });
-    }
-
     async getBalances(provider: ContractProvider) {
         const result = await provider.get('get_balances', []);
         return {

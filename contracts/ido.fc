@@ -1,0 +1,189 @@
+{-
+    This contract is used for IDO of FCK token.
+
+    @author BeyCoder (https://github.com/BeyCoder)
+    @repository https://github.com/fck-foundation/v2-contracts
+-}
+
+#include "imports/stdlib.fc";
+#include "imports/jettonlib.fc";
+
+const op::set_jetton_wallet = "op::set_jetton_wallet"c;
+const op::set_price = "op::set_price"c; ;; set exchange rate
+const op::withdraw_jettons = "op::withdraw_jettons"c; ;; withdraw jettons
+const op::withdraw = "op::withdraw"c; ;; withdraw TON
+
+global slice admin_wallet;
+global slice jetton_wallet;
+global int jetton_balance; ;; jetton wallet balance
+global int price; ;; price in jettons for 1 TON (1 * 10 ^ 8)
+global int sold_jetton_amount; ;; how much jettons is sold (used for getter)
+
+() save_data() impure { ;; save global variables to storage
+    set_data(
+        begin_cell()
+            .store_slice(admin_wallet)
+            .store_slice(jetton_wallet)
+            .store_coins(jetton_balance)
+            .store_coins(price)
+            .store_coins(sold_jetton_amount)
+        .end_cell()
+    );
+}
+
+() load_data() impure { ;; loading global variables from c4 storage
+    var ds = get_data().begin_parse();
+
+    admin_wallet = ds~load_msg_addr();
+    jetton_wallet = ds~load_msg_addr();
+    jetton_balance = ds~load_coins();
+    price = ds~load_coins();
+    sold_jetton_amount = ds~load_coins();
+
+    ds.end_parse();
+}
+
+;; pow function
+(int) binpow (int n, int e) {
+    if (e == 0) {
+        return 1;
+    }
+    if (e == 1) {
+        return n;
+    }
+    int p = binpow(n, e / 2);
+    p *= p;
+    if ((e % 2) == 1) {
+        p *= n;
+    }
+    return p;
+}
+
+() recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
+    if (in_msg_body.slice_empty?()) { ;; ignore all empty messages
+        return ();
+    }
+
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_uint(4);
+    slice sender_address = cs~load_msg_addr();
+
+    (int sender_wc, int sender_hashpart) = parse_std_addr(sender_address);
+
+    throw_unless(333, sender_wc == 0); ;; not basechain
+
+    if (flags & 1) {  ;; ignore bounced messages
+        return ();
+    }
+
+    load_data(); ;; updating global variables from storage
+
+    int op = in_msg_body~load_uint(32);
+    int query_id = in_msg_body~load_uint(64);
+
+    if ((op == 0xdec25470) | (op == 0)) { ;; exchange operation
+        if(msg_value >= 11 * binpow(10, 8)) { ;; if amount > 1 TON + 0.1 TON(network fee)
+            int jetton_amount = (msg_value / binpow(10, 9)) * price; ;; how much user will recieve
+            jetton_amount = jetton_amount - (1 * binpow(10, 8)); ;; minus network fee for sending jettons (~0.1 TON)
+            if (jetton_amount <= jetton_balance) { ;; balance is enough
+                ;; exchange ton to jettons
+                jetton::send(0, jetton_wallet, query_id, jetton_amount, sender_address, sender_address, 1, 64);
+                jetton_balance = jetton_balance - jetton_amount;
+                sold_jetton_amount = sold_jetton_amount + jetton_amount;
+            } else {
+                messages::send(0, sender_address, 64); ;; return back TON
+            }
+        } else {
+            messages::send(0, sender_address, 64); ;; return back TON
+        }
+
+        return ();
+    }
+
+    if (op == op::set_jetton_wallet) { ;; saveing jetton_wallet
+        if equal_slices(sender_address, admin_wallet) {
+            jetton_wallet = in_msg_body~load_msg_addr();
+            jetton_balance = 0;
+            save_data();
+
+            return ();
+        }
+    }
+
+    if (op == op::set_price) { ;; saving price rate
+        if equal_slices(sender_address, admin_wallet) {
+            price = in_msg_body~load_coins();
+            save_data();
+
+            return ();
+        }
+    }
+
+    if (op == op::withdraw_jettons) { ;; withdraw jettons
+        if equal_slices(sender_address, admin_wallet) {
+            int withdraw_amount = in_msg_body~load_coins();
+
+            jetton::send(0, jetton_wallet, query_id, withdraw_amount, admin_wallet, admin_wallet, 1, 64);
+
+            if (jetton_balance <= withdraw_amount) {
+                jetton_balance = 0;
+            } else {
+                jetton_balance = jetton_balance - withdraw_amount;
+            }
+            save_data();
+
+            return ();
+        }
+    }
+
+    if (op == op::withdraw) { ;; withdraw TON (if requested amount = 0, contract will send all reamining balance)
+        if equal_slices(sender_address, admin_wallet) {
+            int withdraw_amount = in_msg_body~load_coins();
+
+            if (withdraw_amount == 0) {
+                messages::send(0, admin_wallet, 128); ;; 128 mode - send all balance
+            } else {
+                messages::send(withdraw_amount, admin_wallet, 0); ;; 0 mode - fee from amount
+            }
+
+            return ();
+        }
+    }
+
+    if (op == op::transfer_notification) {
+        int amount = in_msg_body~load_coins(); ;; amount of tokens
+        slice from_address = in_msg_body~load_msg_addr(); ;; sender's wallet
+
+        if equal_slices(sender_address, jetton_wallet) { ;; if it's correct jetton wallet
+            jetton_balance = jetton_balance + amount; ;; updating balance
+            save_data(); ;; saving data
+
+            return ();
+        }
+        return ();
+    }
+
+    throw(0xffff); ;; unknown message
+}
+
+;; get methods
+
+(int) get_jetton_balance() method_id {
+    load_data();
+    return jetton_balance;
+}
+
+(int) get_price() method_id {
+    load_data();
+    return price;
+}
+
+(int) get_sold_jetton_amount() method_id {
+    load_data();
+    return sold_jetton_amount;
+}
+
+(slice) get_jetton_wallet() method_id {
+    load_data();
+    return jetton_wallet;
+}
