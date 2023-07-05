@@ -113,6 +113,25 @@ export class IDO implements Contract {
                 .endCell(),
         });
     }
+
+    async sendWithdrawJettons(
+        provider: ContractProvider,
+        via: Sender,
+        opts: {
+            amount: bigint;
+            queryID?: number;
+        }
+    ) {
+        await provider.internal(via, {
+            value: toNano("0.1"),
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: beginCell()
+                .storeUint(Opcodes.withdraw_jettons, 32)
+                .storeUint(opts.queryID ?? 0, 64)
+                .storeCoins(opts.amount)
+                .endCell(),
+        });
+    }
     async sendBuy(
         provider: ContractProvider,
         via: Sender,

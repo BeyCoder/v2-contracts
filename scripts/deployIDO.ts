@@ -12,7 +12,7 @@ export async function run(provider: NetworkProvider) {
                 jetton_wallet: null,
                 balance: BigInt(0),
                 sold_jetton_amount: BigInt(0),
-                price: BigInt(parseInt(await ui.input("Price for 1 TON in jettons: ")) * (10 ** (parseInt(await ui.input("Decimals:")) - 1))),
+                price: BigInt(parseInt(await ui.input("Price for 1 TON in jettons: ")) * (10 ** parseInt(await ui.input("Decimals:")))),
             },
             await compile('ido')
         )

@@ -22,7 +22,7 @@ export async function run(provider: NetworkProvider, args: string[]) {
         amount: toNano(await ui.input("Amount of TON: "))
     })
 
-    ui.write(`Handling... Total sold: ${contractBefore}`);
+    ui.write(`Handling... Total sold: ${contractBefore}, Balance: ${await contract.getJettonBalance()}`);
 
     let contractAfter = await contract.getSoldJettonAmount();
     let attempt = 1;

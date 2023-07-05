@@ -83,19 +83,19 @@ global int sold_jetton_amount; ;; how much jettons is sold (used for getter)
 
     if ((op == 0xdec25470) | (op == 0)) { ;; exchange operation
         if(msg_value >= 11 * binpow(10, 8)) { ;; if amount > 1 TON + 0.1 TON(network fee)
-            int jetton_amount = (msg_value / binpow(10, 9)) * price; ;; how much user will recieve
-            jetton_amount = jetton_amount - (1 * binpow(10, 8)); ;; minus network fee for sending jettons (~0.1 TON)
+            int jetton_amount = ((msg_value - (1 * binpow(10, 8))) / binpow(10, 9)) * price; ;; how much user will recieve, minus network fee for sending jettons (~0.1 TON)
             if (jetton_amount <= jetton_balance) { ;; balance is enough
                 ;; exchange ton to jettons
-                jetton::send(0, jetton_wallet, query_id, jetton_amount, sender_address, sender_address, 1, 64);
+                jetton::send(9 * binpow(10, 7), jetton_wallet, query_id, jetton_amount, sender_address, sender_address, 1, 0);
                 jetton_balance = jetton_balance - jetton_amount;
                 sold_jetton_amount = sold_jetton_amount + jetton_amount;
-            } else {
-                messages::send(0, sender_address, 64); ;; return back TON
+
+                save_data();
+                return ();
             }
-        } else {
-            messages::send(0, sender_address, 64); ;; return back TON
         }
+
+        messages::send(0, sender_address, 64); ;; return back TON
 
         return ();
     }
