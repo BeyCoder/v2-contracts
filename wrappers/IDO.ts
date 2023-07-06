@@ -168,4 +168,13 @@ export class IDO implements Contract {
         const result = await provider.get('get_sold_jetton_amount', []);
         return result.stack.readBigNumber();
     }
+    async getData(provider: ContractProvider) {
+        const result = await provider.get('get_data', []);
+        return {
+            jetton_balance: result.stack.readBigNumber(),
+            price: result.stack.readBigNumber(),
+            sold_jetton_amount: result.stack.readBigNumber(),
+            jetton_wallet: result.stack.readAddressOpt(),
+        };
+    }
 }

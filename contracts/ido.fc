@@ -187,3 +187,8 @@ global int sold_jetton_amount; ;; how much jettons is sold (used for getter)
     load_data();
     return jetton_wallet;
 }
+
+(int, int, int, slice) get_data() method_id {
+    load_data();
+    return (jetton_balance, price, sold_jetton_amount, jetton_wallet);
+}
