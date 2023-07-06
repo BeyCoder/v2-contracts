@@ -31,7 +31,7 @@ export async function run(provider: NetworkProvider, args: string[]) {
     const body = beginCell()
         .storeUint(0xf8a7ea5, 32)
         .storeUint(0, 64)
-        .storeCoins(Number(await ui.input("Jettons:")) * (10 ** 9))
+        .storeCoins(Number(await ui.input("Jettons:")) * (10 ** parseInt(await ui.input("Decimals: "))))
         .storeAddress(address)
         .storeAddress(provider.sender().address)
         .storeUint(0, 1)
