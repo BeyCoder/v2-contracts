@@ -169,7 +169,7 @@ export class IDO implements Contract {
         return result.stack.readBigNumber();
     }
     async getAllData(provider: ContractProvider) {
-        const result = await provider.get('get_data', []);
+        const result = await provider.get('get_all_data', []);
         return {
             jetton_balance: result.stack.readBigNumber(),
             price: result.stack.readBigNumber(),
