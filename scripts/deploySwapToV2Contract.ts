@@ -7,7 +7,7 @@ export async function run(provider: NetworkProvider) {
 
     const swapToV2Contract = provider.open(
         SwapToV2Contract.createFromConfig({
-            admin_wallet: Address.parse(await ui.input("Admin wallet:")),
+            admin_wallet: Address.parse(await ui.input("Admin wallet: ")),
             old_jetton_wallet: null,
             new_jetton_wallet: null,
             old_jetton_balance: BigInt(0),

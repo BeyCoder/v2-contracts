@@ -6,8 +6,7 @@ import {JettonMaster, JettonWallet} from "ton";
 export async function run(provider: NetworkProvider, args: string[]) {
     const ui = provider.ui();
 
-    const address = Address.parse(args.length > 0 ? args[0] : await ui.input('Contract address:'));
-    //const address = Address.parse("EQDkwH1BZElWXUBQ7DjQBQAVgHF0XOmhAs5m38hSil3Ebdoa");
+    const address = Address.parse(args.length > 0 ? args[0] : await ui.input('Contract address: '));
 
     if (!(await provider.isContractDeployed(address))) {
         ui.write(`Error: Contract at address ${address} is not deployed!`);
@@ -18,7 +17,7 @@ export async function run(provider: NetworkProvider, args: string[]) {
 
     const contractBefore = await contract.getBalances();
 
-    const new_jetton_address = Address.parse("kQAnGinz-2A3HS28SETLF0XnDJkR25mTyyg_4W6r99YJsTTK");
+    const new_jetton_address = Address.parse(await ui.input("New jetton address: "));
 
     const new_masterContract_code = JettonMaster.create(new_jetton_address);
     const new_masterContract = provider.open(new_masterContract_code);
@@ -30,7 +29,7 @@ export async function run(provider: NetworkProvider, args: string[]) {
     const body = beginCell()
         .storeUint(0xf8a7ea5, 32)
         .storeUint(0, 64)
-        .storeCoins(Number(await ui.input("New tokens:")) * (10 ** 9))
+        .storeCoins(Number(await ui.input("New jettons amount: ")) * (10 ** parseInt(await ui.input("New jetton decimals: "))))
         .storeAddress(address)
         .storeAddress(provider.sender().address)
         .storeUint(0, 1)
@@ -46,7 +45,7 @@ export async function run(provider: NetworkProvider, args: string[]) {
         body
     });
 
-    ui.write('Saving jetton wallets...');
+    ui.write('Saving deposit...');
 
     let contractAfter = await contract.getBalances();
     let attempt = 1;
@@ -58,5 +57,5 @@ export async function run(provider: NetworkProvider, args: string[]) {
     }
 
     ui.clearActionPrompt();
-    ui.write('Jetton wallets saved successfully! Balances: ' + contractAfter.old_jetton + " OLDFCK, " + contractAfter.new_jetton + " NEWFCK");
+    ui.write('Deposit is saved! Balances: ' + contractAfter.old_jetton + " OLD_JETTON, " + contractAfter.new_jetton + " NEW_JETTON");
 }

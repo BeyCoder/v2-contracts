@@ -6,7 +6,7 @@ import {JettonMaster} from "ton";
 export async function run(provider: NetworkProvider, args: string[]) {
     const ui = provider.ui();
 
-    const address = Address.parse(args.length > 0 ? args[0] : await ui.input('Contract address:'));
+    const address = Address.parse(args.length > 0 ? args[0] : await ui.input('Contract address: '));
 
     if (!(await provider.isContractDeployed(address))) {
         ui.write(`Error: Contract at address ${address} is not deployed!`);
@@ -17,8 +17,10 @@ export async function run(provider: NetworkProvider, args: string[]) {
 
     const contractBefore = await contract.getJettonWallets();
 
-    const old_jetton_address = Address.parse("kQCKL0wsvuI83eVeKXHRgNNgFUBLsvCUpX1SFEoOyOxEx_nl");
-    const new_jetton_address = Address.parse("kQAnGinz-2A3HS28SETLF0XnDJkR25mTyyg_4W6r99YJsTTK");
+    const old_jetton_address = Address.parse(await ui.input("Old jetton address: "));
+    const old_jetton_decimals = parseInt(await ui.input("Old jetton decimals: "));
+    const new_jetton_address = Address.parse(await ui.input("New jetton address: "));
+    const new_jetton_decimals = parseInt(await ui.input("New jetton decimals: "));
 
     const old_masterContract_code = JettonMaster.create(old_jetton_address);
     const old_masterContract = provider.open(old_masterContract_code);
@@ -30,9 +32,9 @@ export async function run(provider: NetworkProvider, args: string[]) {
 
     await contract.sendSetJettonWallets(provider.sender(), {
         old_jetton_wallet: old_jetton_wallet,
-        old_jetton_decimals: 5,
+        old_jetton_decimals: old_jetton_decimals,
         new_jetton_wallet: new_jetton_wallet,
-        new_jetton_decimals: 9,
+        new_jetton_decimals: new_jetton_decimals,
     });
 
     ui.write('Saving jetton wallets...');
