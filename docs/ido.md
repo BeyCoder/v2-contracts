@@ -17,9 +17,9 @@ For testnet, add ```--testnet```
 npx blueprint run deployIDO --tonconnect
 ```
 
-### 3. Set old and new jetton wallets
+### 3. Set jetton-wallet
 ```bash
-npx blueprint run setJettonWallet --tonconnect
+npx blueprint run setIDOJettonWallet --tonconnect
 ```
 
 
@@ -29,6 +29,21 @@ npx blueprint run setJettonWallet --tonconnect
 ```bash
 npx blueprint run depositIDOJettons --tonconnect 
 ```
+
+
+## Withdraw
+
+### Withdraw TON:
+```bash
+npx blueprint run withdrawIDO --tonconnect
+```
+
+### Withdraw jettons:
+```bash
+npx blueprint run withdrawJettonsIDO --tonconnect
+```
+
+
 ## Swap
 ```AMOUNT_OF_TON``` must be >= 1 TON. Method will automatically add **0.1 TON network fee**
 
