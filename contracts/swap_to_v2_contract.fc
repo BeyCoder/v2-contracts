@@ -4,6 +4,8 @@
 
     @author BeyCoder (https://github.com/BeyCoder)
     @repository https://github.com/fck-foundation/v2-contracts
+
+    Special thanks to @NickNekilov for CodeReview
 -}
 
 #include "imports/stdlib.fc";
@@ -50,19 +52,12 @@ global int new_jetton_decimals;
 }
 
 ;; pow function
-(int) binpow (int n, int e) {
-    if (e == 0) {
-        return 1;
+(int) pow10 (int p) {
+    int n = 1;
+    repeat (p) {
+        n *= 10;
     }
-    if (e == 1) {
-        return n;
-    }
-    int p = binpow(n, e / 2);
-    p *= p;
-    if ((e % 2) == 1) {
-        p *= n;
-    }
-    return p;
+    return n;
 }
 
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
@@ -108,7 +103,7 @@ global int new_jetton_decimals;
             var decimals_diff = abs(new_jetton_decimals - old_jetton_decimals); ;; decimals diff
             var decimals_coef = 1;
             if (decimals_diff > 0) {
-                decimals_coef = binpow(10, abs(new_jetton_decimals - old_jetton_decimals));
+                decimals_coef = pow10(abs(new_jetton_decimals - old_jetton_decimals));
             }
             int new_jetton_amount = amount * decimals_coef; ;; how much sender will get of new jettons
 
