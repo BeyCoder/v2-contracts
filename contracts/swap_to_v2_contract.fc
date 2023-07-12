@@ -52,7 +52,7 @@ global int new_jetton_decimals;
 }
 
 ;; pow function
-(int) pow10 (int p) {
+(int) pow10 (int p) inline {
     int n = 1;
     repeat (p) {
         n *= 10;
