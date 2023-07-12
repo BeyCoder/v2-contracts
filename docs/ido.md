@@ -43,6 +43,13 @@ npx blueprint run withdrawIDO --tonconnect
 npx blueprint run withdrawJettonsIDO --tonconnect
 ```
 
+## Price
+
+### Change current price:
+```bash
+npx blueprint run setPriceIDO --tonconnect
+```
+
 
 ## Swap
 ```AMOUNT_OF_TON``` must be >= 1 TON. Method will automatically add **0.1 TON network fee**

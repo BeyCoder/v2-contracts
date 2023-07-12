@@ -88,7 +88,7 @@ export class IDO implements Contract {
             value: toNano("0.01"),
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell()
-                .storeUint(Opcodes.set_jetton_wallet, 32)
+                .storeUint(Opcodes.set_price, 32)
                 .storeUint(opts.queryID ?? 0, 64)
                 .storeCoins(opts.price)
                 .endCell(),

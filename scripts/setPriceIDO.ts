@@ -16,8 +16,8 @@ export async function run(provider: NetworkProvider, args: string[]) {
 
     const contract = provider.open(IDO.createFromAddress(address));
 
-    await contract.sendWithdraw(provider.sender(), {
-        amount: BigInt(parseInt(await ui.input("How much TON (0 - all): ")) * 10 ** 9),
+    await contract.sendSetPrice(provider.sender(), {
+        price: BigInt(parseInt(await ui.input("Price for 1 TON in jettons: ")) * (10 ** parseInt(await ui.input("Decimals:")))),
     });
 
     ui.write('Sending message...');
