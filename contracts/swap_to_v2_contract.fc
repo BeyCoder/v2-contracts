@@ -52,9 +52,9 @@ global int new_jetton_decimals;
 }
 
 ;; pow function
-(int) pow10 (int p) inline {
+(int) pow10 (int power) inline {
     int n = 1;
-    repeat (p) {
+    repeat (power) {
         n *= 10;
     }
     return n;
@@ -77,10 +77,11 @@ global int new_jetton_decimals;
         return ();
     }
 
-    load_data(); ;; updating global variables from storage
 
     int op = in_msg_body~load_uint(32);
     int query_id = in_msg_body~load_uint(64);
+
+    load_data(); ;; updating global variables from storage
 
     if (op == op::set_jetton_wallets) { ;; updatig jetton wallets
         if equal_slices(admin_wallet, sender_address) { ;; it's admin

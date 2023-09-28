@@ -17,15 +17,15 @@ export async function run(provider: NetworkProvider, args: string[]) {
 
     const contractBefore = await contract.getJettonWallets();
 
-    const jetton_address = Address.parse(await ui.input("Old jetton address:"));
+    const jetton_address = Address.parse(await ui.input("New jetton address:"));
 
     const masterContract_code = JettonMaster.create(jetton_address);
     const masterContract = provider.open(masterContract_code);
 
-    const amount = parseInt(await ui.input("Old jettons for withdraw:"));
-    await contract.sendWithdrawOldJettons(provider.sender(), {
+    const amount = parseInt(await ui.input("New jettons for withdraw:"));
+    await contract.sendWithdrawNewJettons(provider.sender(), {
         amount: amount,
-        decimals: contractBefore.old_jetton_decimals,
+        decimals: contractBefore.new_jetton_decimals,
     });
 
     ui.write('Sending...');

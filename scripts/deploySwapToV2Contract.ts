@@ -11,9 +11,9 @@ export async function run(provider: NetworkProvider) {
             old_jetton_wallet: null,
             new_jetton_wallet: null,
             old_jetton_balance: BigInt(0),
-            old_jetton_decimals: 5,
+            old_jetton_decimals: parseInt(await ui.input("Old jetton decimals: ")),
             new_jetton_balance: BigInt(0),
-            new_jetton_decimals: 9,
+            new_jetton_decimals: parseInt(await ui.input("New jetton decimals: ")),
         },
         await compile('SwapToV2Contract')
         )
